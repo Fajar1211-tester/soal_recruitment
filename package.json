@@ -1,0 +1,14 @@
+{
+  "name": "talenta-recruitment",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ujian rekrutmen sekali pakai dan analisis penguji berdasarkan Bank Soal Psikotes Karyawan Baru.",
+  "type": "module",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test tests/*.test.js",
+    "admin:setup": "node scripts/setup-admin.js"
+  }
+}
