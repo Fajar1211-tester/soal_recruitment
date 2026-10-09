@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { createApp } from '../server.js';
+import { originalQuestionOrder } from '../lib/order.js';
 
 const answers={
   A:{A1:'48',A2:'37',A3:'13',A4:'25',A5:'u',A6:'13',A7:'B',A8:'C',A9:'B',A10:'citra'},
@@ -147,4 +148,81 @@ test('jawaban, sesi, status sekali pakai dan hasil tetap tersimpan setelah resta
   assert.equal((await p.call('/api/exam')).data.exam.answers.A1,'48');
   assert.equal((await f.client().call('/api/exam/start','POST',{token:invite.token,consent:true})).status,410);
   assert.equal((await f.admin.call(`/api/admin/exams/${invite.exam.id}`)).data.exam.answered,1);
+});
+
+test('urutan dibuat per tautan dan tetap sama saat reload, melanjutkan, serta restart server',async t=>{
+  const f=await fixture(t);
+  const first=await f.invite({name:'Nama Sama'}), second=await f.invite({name:'Nama Sama'});
+  const orderA=JSON.parse(f.instance.store.getExam(first.exam.id).question_order);
+  const orderB=JSON.parse(f.instance.store.getExam(second.exam.id).question_order);
+  assert.notEqual(first.token,second.token);
+  assert.notDeepEqual(orderA,orderB);
+  const a=f.client(), b=f.client();
+  const startA=await a.call('/api/exam/start','POST',{token:first.token,consent:true});
+  const startB=await b.call('/api/exam/start','POST',{token:second.token,consent:true});
+  assert.deepEqual(startA.data.questions.map(q=>q.id),orderA.A);
+  assert.deepEqual(startB.data.questions.map(q=>q.id),orderB.A);
+  const firstId=orderA.A[0];
+  await a.call('/api/exam/answers','PATCH',{section:'A',answers:{[firstId]:answers.A[firstId]}});
+  const resumed=await a.call(`/api/invitations/${first.token}`);
+  assert.equal(resumed.data.resume,true);
+  assert.deepEqual(resumed.data.questions.map(q=>q.id),orderA.A);
+  assert.equal(resumed.data.exam.answers[firstId],answers.A[firstId]);
+  await f.restart();
+  assert.deepEqual((await a.call('/api/exam')).data.questions.map(q=>q.id),orderA.A);
+  assert.deepEqual((await b.call('/api/exam')).data.questions.map(q=>q.id),orderB.A);
+  for(const section of ['A','B','C','D','E']) {
+    const current=await a.call('/api/exam');
+    assert.deepEqual(current.data.questions.map(q=>q.id),orderA[section]);
+    await a.call('/api/exam/answers','PATCH',{section,answers:answers[section]});
+    await a.call('/api/exam/next','POST',{section});
+  }
+  const result=await f.admin.call(`/api/admin/exams/${first.exam.id}`);
+  assert.equal(result.data.exam.result.total,46);
+  assert.deepEqual(result.data.exam.questionOrder,orderA);
+  assert.equal((await f.client().call('/api/exam/start','POST',{token:first.token,consent:true})).status,410);
+});
+
+test('membuat ulang tautan pending mengganti urutan dan membatalkan tautan lama',async t=>{
+  const f=await fixture(t), invite=await f.invite();
+  const before=JSON.parse(f.instance.store.getExam(invite.exam.id).question_order);
+  const rotated=await f.admin.call(`/api/admin/exams/${invite.exam.id}/rotate`,'POST',{});
+  const after=JSON.parse(f.instance.store.getExam(invite.exam.id).question_order);
+  assert.notDeepEqual(after,before);
+  assert.equal((await f.client().call(`/api/invitations/${invite.token}`)).status,404);
+  const p=f.client();
+  const start=await p.call('/api/exam/start','POST',{token:rotated.data.invitationPath.split('/').at(-1),consent:true});
+  assert.equal(start.status,201);
+  assert.deepEqual(start.data.questions.map(q=>q.id),after.A);
+  assert.equal((await f.admin.call(`/api/admin/exams/${invite.exam.id}/rotate`,'POST',{})).status,409);
+});
+
+test('upgrade database lama menjaga akun, jawaban, hasil, dan urutan ujian yang sudah dimulai',async t=>{
+  const f=await fixture(t);
+  const pending=await f.invite(), active=await f.invite(), completed=await f.invite();
+  const a=f.client(), c=f.client();
+  const original=originalQuestionOrder();
+  f.instance.store.db.prepare('UPDATE exams SET question_order=?').run(JSON.stringify(original));
+  await a.call('/api/exam/start','POST',{token:active.token,consent:true});
+  await a.call('/api/exam/answers','PATCH',{section:'A',answers:{A1:'48'}});
+  await c.call('/api/exam/start','POST',{token:completed.token,consent:true});
+  for(const section of ['A','B','C','D','E']) await c.call('/api/exam/next','POST',{section});
+  const resultBefore=(await f.admin.call(`/api/admin/exams/${completed.exam.id}`)).data.exam.result;
+  f.instance.store.db.exec('ALTER TABLE exams DROP COLUMN question_order');
+  await f.restart();
+  assert.equal((await f.admin.call('/api/admin/me')).status,200);
+  const ongoing=await a.call('/api/exam');
+  assert.equal(ongoing.data.exam.status,'active');
+  assert.deepEqual(ongoing.data.questions.map(q=>q.id),original.A);
+  assert.equal(ongoing.data.exam.answers.A1,'48');
+  const completedAfter=(await f.admin.call(`/api/admin/exams/${completed.exam.id}`)).data.exam;
+  assert.equal(completedAfter.status,'completed');
+  assert.deepEqual(completedAfter.result,resultBefore);
+  assert.deepEqual(completedAfter.questionOrder,original);
+  assert.equal((await f.client().call('/api/exam/start','POST',{token:active.token,consent:true})).status,410);
+  const pendingOrder=JSON.parse(f.instance.store.getExam(pending.exam.id).question_order);
+  for(const section of ['A','B','C','D','E']) assert.notDeepEqual(pendingOrder[section],original[section]);
+  await f.restart();
+  assert.deepEqual(JSON.parse(f.instance.store.getExam(pending.exam.id).question_order),pendingOrder);
+  assert.deepEqual((await a.call('/api/exam')).data.questions.map(q=>q.id),original.A);
 });

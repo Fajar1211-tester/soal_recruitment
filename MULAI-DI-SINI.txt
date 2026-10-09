@@ -1,8 +1,11 @@
-TALENTA - PROYEK APLIKASI UJIAN REKRUTMEN
+HRD DIVISION PT SERVIAM GROUP SHIPYARD
+PROYEK APLIKASI UJIAN REKRUTMEN
 ======================================
 
 Paket ini memuat aplikasi lengkap, 48 soal dan analisis sesuai PDF,
 dashboard penguji, wawancara STAR, serta pengujian otomatis.
+Penyelenggara: HRD Division PT Serviam Group Shipyard.
+Logo tersedia sebagai aset lokal public/serviam-logo.svg.
 
 KEBUTUHAN
 - Node.js versi 24 atau lebih baru harus sudah terpasang.
@@ -57,13 +60,20 @@ PENTING UNTUK TAUTAN PESERTA
   dari browser yang sama selama waktu tersedia. Ujian yang selesai
   tidak dapat diulang.
 
+URUTAN SOAL
+- Soal diacak di dalam masing-masing bagian A-E per tautan peserta.
+- Urutan tersimpan dan tetap sama saat halaman/server dimuat ulang.
+- Membuat ulang tautan pending membuat urutan baru.
+- Penilaian tetap menggunakan kode soal dari dokumen sumber.
+- Pembaruan aplikasi menjaga urutan ujian lama yang sudah dimulai.
+
 PENYIMPANAN
 - Database baru dibuat otomatis dalam folder .data saat pertama jalan.
 - ZIP ini tidak menyertakan akun, kata sandi, sesi, atau data peserta.
 - Jangan menghapus folder .data setelah mulai menggunakan aplikasi.
 
 PEMERIKSAAN
-- Jalankan npm test dari folder proyek untuk 19 pengujian otomatis.
+- Jalankan npm test dari folder proyek untuk 24 pengujian otomatis.
 - Panduan lengkap: README.md
 - Dokumen asli: docs/bank-soal.pdf
 

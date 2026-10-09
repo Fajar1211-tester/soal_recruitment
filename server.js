@@ -4,7 +4,8 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { openStore, hash, token, verifyPassword, passwordHash } from './lib/store.js';
-import { SECTIONS, ROLES, SOURCE, INTERVIEWS, QUESTIONS, publicQuestions } from './lib/bank.js';
+import { SECTIONS, ROLES, SOURCE, INTERVIEWS, QUESTIONS } from './lib/bank.js';
+import { createQuestionOrder, orderedPublicQuestions } from './lib/order.js';
 import { validateAnswer } from './lib/scoring.js';
 import { openBrowser } from './lib/browser.js';
 
@@ -76,7 +77,7 @@ export function createApp(options = {}) {
     assert(exam, 404, 'Ujian tidak ditemukan.');
     return exam;
   }
-  function examPayload(exam) { return { exam: store.publicExam(exam), sections: SECTIONS, questions: exam.status === 'active' ? publicQuestions(SECTIONS[exam.section_index].id) : [] }; }
+  function examPayload(exam) { return { exam: store.publicExam(exam), sections: SECTIONS, questions: exam.status === 'active' ? orderedPublicQuestions(SECTIONS[exam.section_index].id, JSON.parse(exam.question_order)) : [] }; }
   function listExams() { return db.prepare('SELECT * FROM exams ORDER BY created_at DESC, rowid DESC').all().map(e => store.adminExam(store.refreshExam(e))); }
   const server = http.createServer(async (req, res) => {
     const send = (status, data) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(data)); };
@@ -138,7 +139,7 @@ export function createApp(options = {}) {
           const id = token();
           const expiryDays = Number(body.expiryDays ?? 7);
           assert(Number.isInteger(expiryDays) && expiryDays >= 1 && expiryDays <= 30, 400, 'Masa berlaku harus 1–30 hari.');
-          db.prepare('INSERT INTO exams(id,name,email,role,token_hash,created_at,expires_at,created_by) VALUES(?,?,?,?,?,?,?,?)').run(id, body.name.trim(), (body.email || '').trim().toLowerCase(), body.role, hash(rawToken), clock(), clock() + expiryDays * 86400_000, user.id);
+          db.prepare('INSERT INTO exams(id,name,email,role,token_hash,created_at,expires_at,created_by,question_order) VALUES(?,?,?,?,?,?,?,?,?)').run(id, body.name.trim(), (body.email || '').trim().toLowerCase(), body.role, hash(rawToken), clock(), clock() + expiryDays * 86400_000, user.id, JSON.stringify(createQuestionOrder()));
           store.audit(user.id, 'invitation_created', id);
           return send(201, { exam: store.adminExam(store.getExam(id)), invitationPath: `/ujian/${rawToken}` });
         }
@@ -165,7 +166,7 @@ export function createApp(options = {}) {
           if (method === 'POST' && adminMatch[2]) {
             assert(exam.status === 'pending', 409, 'Tautan peserta yang sudah mulai tidak dapat dibuat ulang.');
             const rawToken = token();
-            db.prepare('UPDATE exams SET token_hash=?, expires_at=? WHERE id=?').run(hash(rawToken), clock() + 7 * 86400_000, exam.id);
+            db.prepare('UPDATE exams SET token_hash=?, expires_at=?, question_order=? WHERE id=?').run(hash(rawToken), clock() + 7 * 86400_000, JSON.stringify(createQuestionOrder()), exam.id);
             store.audit(user.id, 'invitation_rotated', exam.id);
             return send(200, { invitationPath: `/ujian/${rawToken}` });
           }
@@ -255,7 +256,7 @@ export function createApp(options = {}) {
         res.writeHead(302, { Location: '/' });
         return res.end();
       }
-      const assets = { '/app.js': 'app.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg' };
+      const assets = { '/app.js': 'app.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg', '/serviam-logo.svg': 'serviam-logo.svg' };
       const asset = assets[path];
       const isPage = path === '/' || path === '/setup' || path === '/penguji' || /^\/penguji\/hasil\/[A-Za-z0-9_-]+$/.test(path) || /^\/ujian(?:\/[A-Za-z0-9_-]+)?$/.test(path);
       assert(asset || isPage, 404, 'Halaman tidak ditemukan.');
@@ -277,7 +278,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const { server, store } = createApp();
   server.on('error', error => {
     if (error.code === 'EADDRINUSE') {
-      console.error(`Port ${port} sudah digunakan. Jika Talenta sudah berjalan, gunakan alamat web yang tercetak pada terminal server tersebut. Tutup proses Talenta sebelumnya untuk menjalankan versi yang baru, atau pilih PORT lain.`);
+      console.error(`Port ${port} sudah digunakan. Jika aplikasi ujian HRD sudah berjalan, gunakan alamat web yang tercetak pada terminal server tersebut. Tutup proses aplikasi sebelumnya untuk menjalankan versi yang baru, atau pilih PORT lain.`);
     } else console.error('Server gagal dijalankan:', error.message);
     store.close();
     process.exit(1);
@@ -285,7 +286,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   server.listen(port, process.env.HOST || '0.0.0.0', () => {
     const actualPort = server.address().port;
     const localUrl = `http://localhost:${actualPort}/`;
-    console.log(`Talenta siap. Alamat web: ${localUrl}`);
+    console.log(`Asesmen HRD Division PT Serviam Group Shipyard siap. Alamat web: ${localUrl}`);
     console.log('Biarkan terminal tetap terbuka. Buka alamat web tersebut di browser; file HTML lokal kini diarahkan ke server pada port 3000.');
     if (existsSync(store.bootstrapPath)) console.log('Akun penguji belum dibuat. Jalankan npm run admin:setup atau gunakan kode lokal di .data/bootstrap-token pada halaman penyiapan.');
     const autoOpen = process.env.TALENTA_OPEN_BROWSER;

@@ -33,6 +33,12 @@ test('skrip pembuka diizinkan CSP berdasarkan hash; nama file HTTP menuju halama
   const base = `http://127.0.0.1:${server.address().port}`;
   const response = await fetch(base);
   assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.match(body, /HRD Division PT Serviam Group Shipyard/);
+  const logo = await fetch(base + '/serviam-logo.svg');
+  assert.equal(logo.status, 200);
+  assert.match(logo.headers.get('content-type'), /image\/svg\+xml/);
+  assert.match(await logo.text(), /PT Serviam Group Shipyard/);
   const expected = createHash('sha256').update(script).digest('base64');
   const csp = response.headers.get('content-security-policy');
   assert.ok(csp.includes(`script-src 'self' 'sha256-${expected}'`));

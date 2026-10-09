@@ -1,4 +1,6 @@
-# Membuka Talenta di Visual Studio atau VS Code
+# Membuka asesmen HRD Division PT Serviam Group Shipyard
+
+Paket ini menggunakan identitas **HRD Division PT Serviam Group Shipyard**, logo Serviam, dan urutan soal yang tersimpan per peserta.
 
 Ekstrak seluruh ZIP ke folder proyek, misalnya `alif/talenta-recruitment`. Jika memperbarui proyek lama, pertahankan folder `.data` agar akun dan jawaban tersimpan. Pastikan **Node.js 24 atau lebih baru** terpasang. Aplikasi menggunakan SQLite bawaan Node; tidak memerlukan SQL Server, IIS, atau API key.
 
@@ -26,7 +28,7 @@ Konfigurasi tersedia di `.vscode/launch.json`, `.vscode/tasks.json`, dan `.vscod
 Tugas tambahan tersedia melalui **Terminal → Run Task**:
 
 - **Talenta: buat akun penguji** — terminal interaktif untuk membuat akun pertama saat server sedang berjalan.
-- **Talenta: uji aplikasi** — menjalankan 19 pengujian otomatis.
+- **Talenta: uji aplikasi** — menjalankan 24 pengujian otomatis.
 - **Talenta: cek Node.js 24+** — memeriksa runtime sebelum menjalankan aplikasi.
 
 ## Akun penguji pertama
@@ -48,4 +50,4 @@ Masukkan nama, email, dan kata sandi minimal 12 karakter; kata sandi tidak ditam
 
 ## Validasi paket
 
-Konfigurasi JSON/XML, referensi file solution/proyek, jalur relatif workspace, pemeriksaan runtime, serta kecocokan pola server-ready dengan startup aplikasi diperiksa saat paket dibuat. Aplikasi dan 19 pengujiannya dijalankan dari hasil ekstraksi ZIP. Lingkungan pemeriksaan ini tidak menyediakan IDE Visual Studio Windows atau VS Code, sehingga sesi F5 di IDE tersebut belum dijalankan secara langsung.
+Konfigurasi JSON/XML, referensi file solution/proyek, jalur relatif workspace, pemeriksaan runtime, serta kecocokan pola server-ready dengan startup aplikasi diperiksa saat paket dibuat. Aplikasi dan 24 pengujiannya dijalankan dari hasil ekstraksi ZIP. Lingkungan pemeriksaan ini tidak menyediakan IDE Visual Studio Windows atau VS Code, sehingga sesi F5 di IDE tersebut belum dijalankan secara langsung.

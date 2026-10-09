@@ -1,6 +1,6 @@
-# Talenta — Asesmen Rekrutmen
+# HRD Division PT Serviam Group Shipyard — Asesmen Rekrutmen
 
-Aplikasi ujian sekali pakai untuk peserta dan dashboard penilaian untuk penguji. Soal, kunci, analisis, waktu, dan panduan wawancara mengacu pada **Bank Soal Psikotes Karyawan Baru** dari Fajar (8 Oktober 2026), yang tersimpan di `docs/bank-soal.pdf`.
+Aplikasi ujian sekali pakai yang diselenggarakan oleh **HRD Division PT Serviam Group Shipyard**, dengan logo Serviam dan dashboard penilaian untuk penguji. Soal, kunci, analisis, waktu, dan panduan wawancara mengacu pada **Bank Soal Psikotes Karyawan Baru** dari Fajar (8 Oktober 2026), yang tersimpan di `docs/bank-soal.pdf`.
 
 ## Menjalankan aplikasi
 
@@ -47,6 +47,14 @@ Masukkan nama, email, serta kata sandi minimal 12 karakter. Input kata sandi tid
 
 Token undangan bukan verifikasi identitas. Peserta yang kehilangan cookie setelah memulai tidak mendapat sesi baru; jangan menghapus cookie atau berganti browser saat ujian.
 
+## Urutan soal per peserta
+
+Urutan 48 soal diacak **di dalam masing-masing bagian A–E** ketika tautan undangan dibuat, lalu disimpan di SQLite untuk peserta tersebut. Urutan bagian dan batas waktunya mengikuti PDF. Setiap bagian selalu memuat seluruh butir satu kali; pilihan jawaban tetap mengikuti sumber. Urutan tidak berubah ketika halaman dimuat ulang, peserta melanjutkan sesi, atau server dijalankan ulang. Penguji melihat rincian A–D menurut nomor yang tampil pada peserta dan dapat memeriksa kode soal sumber. Nilai, bobot situasional, butir balik, dan analisis menggunakan kode sumber, bukan posisi tampilan.
+
+Membuat ulang undangan yang belum digunakan membatalkan tautan lama dan membuat urutan baru. Saat memperbarui aplikasi lama, undangan yang belum dimulai mendapat urutan acak; ujian yang sedang berjalan dan hasil yang sudah selesai mempertahankan urutan sumber sebelumnya. Migrasi otomatis menambahkan kolom `question_order` tanpa menghapus akun, jawaban, sesi, atau hasil. **Pertahankan folder `.data`** ketika memperbarui aplikasi di laptop.
+
+Identitas penyelenggara tampil di halaman masuk, dashboard, undangan, formulir persetujuan peserta, dan halaman ujian. Aset `public/serviam-logo.svg` adalah gambar vektor berdasarkan logo yang dilampirkan dan juga dipakai sebagai favicon. Nama file workspace/solution tetap tersedia seperti pada paket sebelumnya.
+
 ## Aturan penilaian
 
 | Bagian | Butir | Waktu | Maksimum | Minimum |
@@ -87,7 +95,7 @@ Data akun, peserta, dan sesi tersimpan saat proses restart. Proses server harus 
 
 ## Validasi
 
-`npm test` menjalankan 19 pengujian dengan database sementara yang terisolasi: kesesuaian kunci/bobot/ambang, skoring E, validitas, wawancara, autentikasi, CSRF, rotasi dan expiry, dua permintaan mulai bersamaan, deadline server, penguncian jawaban, penghapusan, ekspor CSV, ketahanan data dan sesi setelah restart, serta pengarahan HTML lokal, fallback pemuatan, CSP pembuka, dan perintah browser lintas platform.
+`npm test` menjalankan 24 pengujian dengan database sementara yang terisolasi: kesesuaian kunci/bobot/ambang, skoring E, validitas, wawancara, autentikasi, CSRF, rotasi dan expiry, dua permintaan mulai bersamaan, deadline server, penguncian jawaban, penghapusan, ekspor CSV, ketahanan data dan sesi setelah restart, serta pengarahan HTML lokal, fallback pemuatan, CSP pembuka, dan perintah browser lintas platform. Pengujian tambahan memeriksa keutuhan seluruh butir setelah pengacakan, urutan per tautan, urutan setelah resume/restart/rotasi, skoring setelah pengacakan, migrasi database lama, serta pemuatan identitas dan logo.
 
 Alur antarmuka juga telah diuji di Chromium: akun pertama, undangan, 48 jawaban, resume, penolakan browser kedua, skor 46/46, penyimpanan wawancara dan keputusan, pencarian, panduan, serta tata letak desktop/ponsel. Data uji tidak dimasukkan ke database aplikasi utama.
 
