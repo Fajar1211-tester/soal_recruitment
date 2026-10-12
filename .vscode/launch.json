@@ -14,9 +14,16 @@
       "env": {
         "HOST": "0.0.0.0",
         "PORT": "3000",
-        "TALENTA_OPEN_BROWSER": "false"
+        "TALENTA_OPEN_BROWSER": "false",
+        "NODE_ENV": "development",
+        "APP_ORIGIN": "",
+        "COOKIE_SECURE": "false",
+        "TRUST_PROXY": "false",
+        "BOOTSTRAP_ACCOUNTS": "true"
       },
-      "skipFiles": ["<node_internals>/**"],
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
       "serverReadyAction": {
         "pattern": "Alamat web: (http://localhost:[0-9]+/)",
         "uriFormat": "%s",

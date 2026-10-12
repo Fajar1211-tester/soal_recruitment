@@ -77,8 +77,11 @@ function setView(view) {
   renderAdmin();
 }
 async function loadAdmin() {
-  const [me, meta, exams] = await Promise.all([api('/api/admin/me'), api('/api/admin/meta'), api('/api/admin/exams')]);
-  state.user = me.user; state.meta = meta; state.exams = exams.exams;
+  state.user = (await api('/api/admin/me')).user;
+  if (state.user.role !== 'superadmin' && ['users','system'].includes(state.view)) state.view = 'dashboard';
+  if (state.user.mustChangePassword) return;
+  const [meta, exams] = await Promise.all([api('/api/admin/meta'), api('/api/admin/exams')]);
+  state.meta = meta; state.exams = exams.exams;
 }
 async function refreshAdmin() {
   const data = await api('/api/admin/exams'); state.exams = data.exams;
@@ -92,14 +95,31 @@ function renderLogin(configured = true) {
 
 function sidebar() {
   const nav = [['dashboard', 'grid', 'Ringkasan'], ['participants', 'users', 'Peserta ujian'], ['analytics', 'chart', 'Analisis hasil'], ['guide', 'book', 'Bank & panduan']];
-  return `<aside class="sidebar"><a class="brand" href="/penguji">${brand}</a><div class="workspace-label">RUANG KERJA</div><div class="workspace-selector"><span class="workspace-avatar">HRD</span><div><strong>Serviam Group Shipyard</strong><span>Asesmen karyawan baru</span></div></div><div class="nav-label">MENU UTAMA</div><nav>${nav.map(([view, symbol, label]) => `<button data-action="view" data-view="${view}" class="nav-item ${state.view === view && !state.detail ? 'active' : ''}">${icon(symbol)}<span>${label}</span>${view === 'participants' && state.exams.length ? `<span class="nav-count">${state.exams.length}</span>` : ''}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="sidebar-tip">${icon('shield')}<strong>Satu peserta, satu kesempatan.</strong><p>Tautan pribadi menjaga setiap proses asesmen tetap terarah.</p></div><div class="sidebar-user"><span class="avatar">${esc(initials(state.user.name))}</span><div><strong>${esc(state.user.name)}</strong><span>Penguji</span></div><button class="icon-button" data-action="logout" aria-label="Keluar" title="Keluar">${icon('logout')}</button></div></div></aside>`;
+  if (state.user.role === 'superadmin') nav.push(['users', 'users', 'Akun penguji'], ['system', 'shield', 'Sistem & aktivitas']);
+  return `<aside class="sidebar"><a class="brand" href="/penguji">${brand}</a><div class="workspace-label">RUANG KERJA</div><div class="workspace-selector"><span class="workspace-avatar">HRD</span><div><strong>Serviam Group Shipyard</strong><span>Asesmen karyawan baru</span></div></div><div class="nav-label">MENU UTAMA</div><nav>${nav.map(([view, symbol, label]) => `<button data-action="view" data-view="${view}" class="nav-item ${state.view === view && !state.detail ? 'active' : ''}">${icon(symbol)}<span>${label}</span>${view === 'participants' && state.exams.length ? `<span class="nav-count">${state.exams.length}</span>` : ''}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="sidebar-tip">${icon('shield')}<strong>Satu peserta, satu kesempatan.</strong><p>Tautan pribadi menjaga setiap proses asesmen tetap terarah.</p></div><div class="sidebar-user"><span class="avatar">${esc(initials(state.user.name))}</span><div><strong>${esc(state.user.name)}</strong><span>${state.user.role === 'superadmin' ? 'Superadmin' : 'Admin penguji'}</span></div><button class="icon-button" data-action="logout" aria-label="Keluar" title="Keluar">${icon('logout')}</button></div></div></aside>`;
 }
 function renderAdmin() {
-  const titles = { dashboard: 'Ringkasan', participants: 'Peserta ujian', analytics: 'Analisis hasil', guide: 'Bank & panduan' };
-  app.innerHTML = `<div class="admin-layout">${sidebar()}<div class="admin-main"><header class="topbar"><button class="icon-button mobile-menu" data-action="menu" aria-label="Buka menu">${icon('menu')}</button><div class="breadcrumb">Ruang penguji ${icon('chevron')} <strong>${state.detail ? 'Hasil peserta' : titles[state.view]}</strong></div><div class="topbar-right"><span class="today">${date(Date.now())}</span><span class="topbar-divider"></span><span class="avatar small">${esc(initials(state.user.name))}</span></div></header><main class="content">${state.detail ? detailView() : state.view === 'participants' ? participantsView() : state.view === 'analytics' ? analyticsView() : state.view === 'guide' ? guideView() : dashboardView()}</main><footer class="main-footer"><span>© ${new Date().getFullYear()} ${organizerName}</span><span>${icon('shield')} Hasil hanya untuk tim rekrutmen</span></footer></div></div>`;
+  if (state.user.mustChangePassword) { renderPasswordChange(); return; }
+  const titles = { dashboard: 'Ringkasan', participants: 'Peserta ujian', analytics: 'Analisis hasil', guide: 'Bank & panduan', users: 'Akun penguji', system: 'Sistem & aktivitas' };
+  app.innerHTML = `<div class="admin-layout">${sidebar()}<div class="admin-main"><header class="topbar"><button class="icon-button mobile-menu" data-action="menu" aria-label="Buka menu">${icon('menu')}</button><div class="breadcrumb">Ruang penguji ${icon('chevron')} <strong>${state.detail ? 'Hasil peserta' : titles[state.view]}</strong></div><div class="topbar-right"><button class="icon-button" data-action="password" aria-label="Ganti kata sandi" title="Ganti kata sandi">${icon('lock')}</button><span class="today">${date(Date.now())}</span><span class="topbar-divider"></span><span class="avatar small">${esc(initials(state.user.name))}</span></div></header><main class="content">${state.detail ? detailView() : state.view === 'participants' ? participantsView() : state.view === 'analytics' ? analyticsView() : state.view === 'guide' ? guideView() : state.view === 'users' ? usersView() : state.view === 'system' ? systemView() : dashboardView()}</main><footer class="main-footer"><span>© ${new Date().getFullYear()} ${organizerName}</span><span>${icon('shield')} Hasil hanya untuk tim rekrutmen</span></footer></div></div>`;
+}
+function renderPasswordChange() {
+  clearInterval(pollTimer); clearInterval(tickTimer);
+  app.innerHTML = `<main class="password-page"><a class="brand dark" href="/">${brand}</a><span class="eyebrow">KEAMANAN AKUN</span><h1>${state.user.mustChangePassword ? 'Ganti kata sandi awal' : 'Ganti kata sandi Anda'}</h1><p class="muted">${esc(state.user.email)} · ${state.user.role === 'superadmin' ? 'Superadmin' : 'Admin penguji'}</p><p class="password-info">${state.user.mustChangePassword ? 'Masukkan kata sandi awal dari file .data/initial-accounts.txt atau yang diberikan superadmin. Tentukan kata sandi pribadi untuk membuka dashboard.' : 'Perubahan ini mengakhiri sesi lain yang masih aktif.'}</p><form id="password-form" class="stack-form"><label>Kata sandi saat ini<input type="password" name="currentPassword" autocomplete="current-password" required maxlength="128" /></label><label>Kata sandi baru<input type="password" name="password" autocomplete="new-password" required minlength="12" maxlength="128" /></label><label>Ulangi kata sandi baru<input type="password" name="confirmPassword" autocomplete="new-password" required minlength="12" maxlength="128" /></label><p class="form-error" role="alert"></p><button class="button primary" type="submit">Simpan kata sandi ${icon('check')}</button></form><button class="text-button" data-action="logout">Keluar dari akun</button></main>`;
+}
+function usersView() {
+  return `${pageHead('SUPERADMIN', 'Akun penguji', 'Atur akses admin dan superadmin. Akun baru wajib mengganti kata sandi awal.', '<button class="button primary" data-action="user-add">' + icon('plus') + ' Tambah akun</button>')}<section class="panel"><div class="table-scroll"><table class="participant-table"><thead><tr><th>Nama</th><th>Email</th><th>Peran</th><th>Status</th><th>Akses awal</th><th>Aksi</th></tr></thead><tbody>${(state.users || []).map(user => `<tr><td>${esc(user.name)}</td><td>${esc(user.email)}</td><td>${user.role === 'superadmin' ? 'Superadmin' : 'Admin penguji'}</td><td>${badge(user.active ? 'Aktif' : 'Nonaktif', user.active ? 'green' : 'gray')}</td><td>${user.mustChangePassword ? 'Wajib ganti sandi' : 'Siap'}</td><td><button class="button secondary" data-action="user-edit" data-id="${user.id}">Kelola</button></td></tr>`).join('')}</tbody></table></div></section>`;
+}
+function systemView() {
+  const info = state.system || {};
+  return `${pageHead('SUPERADMIN', 'Sistem & aktivitas', 'Status konfigurasi dan 200 aktivitas terbaru. Undangan dibagikan melalui tautan.')}<section class="panel system-info"><dl><div><dt>Mode aplikasi</dt><dd>${esc(info.mode)}</dd></div><div><dt>Alamat publik</dt><dd>${esc(info.publicOrigin || 'Belum ditetapkan; mode lokal')}</dd></div><div><dt>Cookie Secure</dt><dd>${info.secureCookies ? 'Aktif' : 'Lokal HTTP'}</dd></div><div><dt>Database SQLite</dt><dd>${info.database ? 'Pemeriksaan integritas lulus' : 'Perlu diperiksa'}</dd></div><div><dt>Undangan</dt><dd>Link · salin dan bagikan manual</dd></div><div><dt>Node.js</dt><dd>${esc(info.nodeVersion)}</dd></div></dl></section><section class="panel"><div class="panel-heading"><h2>Log aktivitas</h2></div><div class="table-scroll"><table class="participant-table"><thead><tr><th>Waktu</th><th>Pengguna</th><th>Aktivitas</th></tr></thead><tbody>${(state.audit || []).map(entry => `<tr><td>${dateTime(entry.at)}</td><td>${esc(entry.actor_name || (entry.actor.startsWith('peserta:') ? 'Peserta ujian' : 'Operator'))}</td><td>${esc(entry.action)}</td></tr>`).join('')}</tbody></table></div></section>`;
+}
+function userModal(user = null) {
+  const editing = Boolean(user);
+  showModal(editing ? 'Kelola akun penguji' : 'Tambah akun penguji', `<form id="${editing ? 'user-edit-form' : 'user-form'}" ${editing ? `data-id="${user.id}"` : ''} class="stack-form">${editing ? `<p class="modal-description">${esc(user.name)} · ${esc(user.email)}</p>` : '<label>Nama<input name="name" required minlength="2" maxlength="80" /></label><label>Email akun<input type="email" name="email" required /></label>'}<label>Peran<select name="role"><option value="admin" ${user?.role === 'admin' ? 'selected' : ''}>Admin penguji</option><option value="superadmin" ${user?.role === 'superadmin' ? 'selected' : ''}>Superadmin</option></select></label>${editing ? `<label>Status<select name="active"><option value="true" ${user.active ? 'selected' : ''}>Aktif</option><option value="false" ${!user.active ? 'selected' : ''}>Nonaktif</option></select></label>` : ''}<label>${editing ? 'Kata sandi awal baru (opsional)' : 'Kata sandi awal'}<input type="password" name="password" autocomplete="new-password" ${editing ? '' : 'required'} minlength="12" maxlength="128" /><small>${editing ? 'Isi untuk mereset kata sandi dan mengakhiri sesi akun ini.' : 'Berikan kata sandi ini secara pribadi kepada pemilik akun.'} Kata sandi awal wajib diganti saat masuk.</small></label><p class="form-error" role="alert"></p><button class="button primary" type="submit">Simpan akun</button></form>`);
 }
 function pageHead(eyebrow, title, description, buttons = '') { return `<div class="page-heading"><div><span class="eyebrow">${eyebrow}</span><h1>${title}</h1><p class="muted">${description}</p></div><div class="heading-actions">${buttons}</div></div>`; }
-const inviteButton = `<button class="button primary" data-action="invite">${icon('plus')} Undang peserta</button>`;
+const inviteButton = `<button class="button primary" data-action="invite">${icon('plus')} Add invitation</button>`;
 const exportButton = `<a class="button secondary" href="/api/admin/export" download>${icon('download')} Ekspor CSV</a>`;
 function dashboardView() {
   const completed = state.exams.filter(e => e.status === 'completed');
@@ -115,7 +135,7 @@ function dashboardView() {
   return `${pageHead('DASHBOARD', 'Gambaran rekrutmen Anda', 'Pantau proses asesmen dan temukan potensi di setiap peserta.', inviteButton)}<section class="hero"><div class="hero-content"><span class="hero-kicker"><span></span> ASESMEN KARYAWAN BARU</span><h2>Kenali potensi.<br>Bangun tim terbaik.</h2><p>Dari kemampuan dasar hingga cara menghadapi situasi kerja.<br>Keputusan yang lebih terarah dimulai dari pemahaman.</p><div class="hero-facts"><span>${icon('file')} 48 soal</span><i></i><span>${icon('clock')} 65 menit</span><i></i><span>${icon('shield')} Sekali pakai</span></div></div><div class="hero-art" aria-hidden="true"><svg viewBox="0 0 300 225"><defs><linearGradient id="artfade" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e2f5b8"/><stop offset="1" stop-color="#89c4a2"/></linearGradient></defs><circle cx="163" cy="112" r="101" fill="none" stroke="#ffffff" stroke-opacity=".08"/><circle cx="163" cy="112" r="77" fill="none" stroke="#ffffff" stroke-opacity=".13"/><circle cx="163" cy="112" r="50" fill="none" stroke="#ffffff" stroke-opacity=".17"/><path d="M163 11v202M62 112h202M90 41l144 143M90 184 234 41" stroke="#ffffff" stroke-opacity=".06"/><path d="m163 28 69 48-18 81-87 30-49-74Z" fill="url(#artfade)" fill-opacity=".14" stroke="#c8e8ad" stroke-width="2"/><path d="m163 63 45 22-11 52-44 14-39-35Z" fill="#c4edb3" fill-opacity=".22" stroke="#d2edbc" stroke-width="1.5"/>${[[163,28],[232,76],[214,157],[127,187],[78,113]].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="4" fill="#d9efbd"/>`).join('')}<g transform="translate(22,28)"><rect width="89" height="34" rx="9" fill="#fff"/><circle cx="17" cy="17" r="7" fill="#e8f2df"/><path d="m14 17 2 2 4-4" fill="none" stroke="#47653d" stroke-width="1.5"/><text x="30" y="21" fill="#38533d" font-size="10" font-family="sans-serif">Potensi terukur</text></g><g transform="translate(174,173)"><rect width="110" height="36" rx="9" fill="#f0f6e9"/><text x="13" y="23" fill="#38533d" font-size="11" font-family="sans-serif">Kenali cara kerjanya</text></g></svg></div></section><section class="stats-grid">${stats.map(([symbol,label,value,caption,tone]) => `<article class="stat-card"><div class="stat-top"><span>${label}</span><span class="stat-icon ${tone}">${icon(symbol)}</span></div><strong class="stat-number">${value}</strong><p>${caption}</p></article>`).join('')}</section><section class="panel participants-panel"><div class="panel-heading"><div><h2>Peserta terbaru</h2><p>Ikuti perjalanan asesmen, mulai dari undangan hingga hasil.</p></div><button class="text-button" data-action="view" data-view="participants">Lihat semua ${icon('arrow')}</button></div>${participantTable(state.exams.slice(0, 5))}</section><div class="below-grid"><article class="info-card"><span class="info-icon">${icon('book')}</span><div><h3>Asesmen dengan panduan yang jelas</h3><p>Lima bagian tes tertulis dan wawancara STAR, mengikuti bank soal yang Anda gunakan.</p><button class="text-button" data-action="view" data-view="guide">Pelajari panduan ${icon('arrow')}</button></div></article><article class="info-card"><span class="info-icon">${icon('users')}</span><div><h3>Hasil untuk membantu keputusan</h3><p>Tinjau skor dan klarifikasi melalui wawancara. Keputusan akhir ada pada tim penguji.</p><button class="text-button" data-action="view" data-view="analytics">Buka analisis hasil ${icon('arrow')}</button></div></article></div>`;
 }
 function participantTable(exams) {
-  return `<div class="table-scroll"><table class="participant-table"><thead><tr><th>Peserta</th><th>Posisi</th><th>Status ujian</th><th>Nilai A–D</th><th>Tinjauan</th><th><span class="sr-only">Aksi</span></th></tr></thead><tbody>${exams.length ? exams.map((e,i) => `<tr><td><div class="person"><span class="avatar color-${i % 4}">${esc(initials(e.name))}</span><div><strong>${esc(e.name)}</strong><span>${esc(e.email || `Diundang ${date(e.createdAt)}`)}</span></div></div></td><td>${esc(roleName(e.role))}</td><td>${examBadge(e)}</td><td>${e.total !== null ? `<span class="table-score">${e.total}<small> / 46</small></span>` : e.status === 'active' ? `<span class="muted">${e.answered}/48 terjawab</span>` : '<span class="muted">—</span>'}</td><td>${e.review ? badge(e.review.label, e.review.tone) : '<span class="muted">Belum tersedia</span>'}</td><td><button class="row-action" data-action="detail" data-id="${e.id}" aria-label="Lihat ${esc(e.name)}" title="Lihat peserta">${icon('chevron')}</button></td></tr>`).join('') : `<tr><td colspan="6"><div class="empty-state"><span class="empty-icon">${icon(state.search ? 'search' : 'users')}</span><h3>${state.search || state.filter !== 'all' ? 'Belum ada peserta yang sesuai' : 'Mulai dengan peserta pertama'}</h3><p>${state.search || state.filter !== 'all' ? 'Coba kata kunci atau filter status lainnya.' : 'Buat undangan pribadi. Setelah peserta selesai, nilai dan analisisnya akan tampil di sini.'}</p>${state.search || state.filter !== 'all' ? '' : '<button class="button secondary" data-action="invite">' + icon('plus') + ' Undang peserta</button>'}</div></td></tr>`}</tbody></table></div>`;
+  return `<div class="table-scroll"><table class="participant-table"><thead><tr><th>Peserta</th><th>Posisi</th><th>Status ujian</th><th>Nilai A–D</th><th>Tinjauan</th><th><span class="sr-only">Aksi</span></th></tr></thead><tbody>${exams.length ? exams.map((e,i) => `<tr><td><div class="person"><span class="avatar color-${i % 4}">${esc(initials(e.name))}</span><div><strong>${esc(e.name)}</strong><span>${esc(e.email || `Diundang ${date(e.createdAt)}`)}</span></div></div></td><td>${esc(roleName(e.role))}</td><td>${examBadge(e)}</td><td>${e.total !== null ? `<span class="table-score">${e.total}<small> / 46</small></span>` : e.status === 'active' ? `<span class="muted">${e.answered}/48 terjawab</span>` : '<span class="muted">—</span>'}</td><td>${e.review ? badge(e.review.label, e.review.tone) : '<span class="muted">Belum tersedia</span>'}</td><td><button class="row-action" data-action="detail" data-id="${e.id}" aria-label="Lihat ${esc(e.name)}" title="Lihat peserta">${icon('chevron')}</button></td></tr>`).join('') : `<tr><td colspan="6"><div class="empty-state"><span class="empty-icon">${icon(state.search ? 'search' : 'users')}</span><h3>${state.search || state.filter !== 'all' ? 'Belum ada peserta yang sesuai' : 'Mulai dengan peserta pertama'}</h3><p>${state.search || state.filter !== 'all' ? 'Coba kata kunci atau filter status lainnya.' : 'Buat undangan pribadi. Setelah peserta selesai, nilai dan analisisnya akan tampil di sini.'}</p>${state.search || state.filter !== 'all' ? '' : '<button class="button secondary" data-action="invite">' + icon('plus') + ' Add invitation</button>'}</div></td></tr>`}</tbody></table></div>`;
 }
 function participantsView() {
   const filters = [['all','Semua peserta'], ['pending','Menunggu'], ['active','Sedang ujian'], ['completed','Selesai'], ['expired','Kedaluwarsa']];
@@ -177,11 +197,11 @@ function confirmAction(title, message, label = 'Lanjutkan', danger = false) {
   });
 }
 function inviteModal() {
-  showModal('Undang peserta baru', `<p class="modal-description">Setiap undangan memberikan satu kesempatan ujian dengan urutan soal yang diacak per peserta. Bagikan tautan hanya kepada peserta yang dituju.</p><form id="invite-form" class="stack-form"><label>Nama peserta<input name="name" placeholder="Nama lengkap peserta" minlength="2" maxlength="80" required /></label><label>Email <span class="optional">opsional</span><input name="email" type="email" placeholder="peserta@email.com" /></label><div class="form-two-col"><label>Posisi<select name="role">${state.meta.roles.map(r=>`<option value="${r.id}">${r.name}</option>`).join('')}</select></label><label>Masa berlaku<select name="expiryDays"><option value="7">7 hari</option><option value="1">1 hari</option><option value="14">14 hari</option><option value="30">30 hari</option></select></label></div><p class="form-error" id="invite-error" role="alert"></p><div class="modal-footer"><button class="button secondary" type="button" data-action="close-modal">Batal</button><button class="button primary" type="submit">Buat undangan ${icon('arrow')}</button></div></form>`);
+  showModal('Add invitation · peserta ujian', `<p class="modal-description">Buat link ujian pribadi, lalu salin dan bagikan kepada peserta melalui WhatsApp atau cara yang Anda pilih. Urutan soal diacak per peserta; link memberi satu kesempatan ujian.</p><form id="invite-form" class="stack-form"><label>Nama peserta<input name="name" placeholder="Nama lengkap peserta" minlength="2" maxlength="80" required /></label><label>Email peserta <span class="optional">opsional, hanya untuk identitas</span><input name="email" type="email" placeholder="peserta@email.com" /></label><div class="form-two-col"><label>Posisi<select name="role">${state.meta.roles.map(r=>`<option value="${r.id}">${r.name}</option>`).join('')}</select></label><label>Masa berlaku<select name="expiryDays"><option value="7">7 hari</option><option value="1">1 hari</option><option value="14">14 hari</option><option value="30">30 hari</option></select></label></div><p class="form-error" id="invite-error" role="alert"></p><div class="modal-footer"><button class="button secondary" type="button" data-action="close-modal">Batal</button><button class="button primary" type="submit">Buat undangan ${icon('arrow')}</button></div></form>`);
 }
-function invitationModal(path, name) {
-  const url = new URL(path, location.origin).href;
-  showModal('Undangan siap dibagikan', `<div class="invitation-success">${icon('checkCircle')}<h3>${esc(name)}</h3><p>Tautan hanya dapat dipakai untuk satu kesempatan ujian. Urutan soal diacak khusus untuk tautan ini.</p></div><label class="link-label">Tautan pribadi peserta<div class="copy-field"><input id="invitation-link" type="text" readonly value="${esc(url)}" /><button class="icon-button" data-action="copy-link" aria-label="Salin tautan">${icon('copy')}</button></div></label><div class="notice compact">${icon('shield')}<p>Simpan atau salin tautan sekarang. Aplikasi tidak menyimpan tautan asli. Membuat ulang tautan akan membatalkan tautan sebelumnya.</p></div>`, '<button class="button primary" data-action="close-modal">Selesai</button>');
+function invitationModal(path, name, publicOrigin) {
+  const url = new URL(path, publicOrigin || location.origin).href;
+  showModal('Undangan siap dibagikan', `<div class="invitation-success">${icon('checkCircle')}<h3>${esc(name)}</h3><p>Tautan hanya dapat dipakai untuk satu kesempatan ujian. Urutan soal diacak khusus untuk tautan ini.</p></div><label class="link-label">Tautan pribadi peserta<div class="copy-field"><input id="invitation-link" type="text" readonly value="${esc(url)}" /><button class="button secondary" data-action="copy-link" aria-label="Salin tautan">${icon('copy')} Copy link</button></div></label><div class="notice compact">${icon('shield')}<p>Simpan atau salin tautan sekarang. Aplikasi tidak menyimpan tautan asli. Membuat ulang tautan akan membatalkan tautan sebelumnya.</p></div>`, '<button class="button primary" data-action="close-modal">Selesai</button>');
 }
 
 function examHeader(name = '') { return `<header class="exam-topbar"><a class="brand dark" href="/">${brand}</a><span class="exam-secure">${icon('shield')} Asesmen pribadi</span>${name ? `<div class="exam-person"><span class="avatar small">${esc(initials(name))}</span><span>${esc(name)}</span></div>` : ''}</header>`; }
@@ -331,7 +351,14 @@ document.addEventListener('click', async event => {
   if (!target || target.disabled) return;
   const action=target.dataset.action;
   try {
-    if (action==='view') setView(target.dataset.view);
+    if (action==='view') {
+      if (target.dataset.view === 'users') state.users = (await api('/api/admin/users')).users;
+      if (target.dataset.view === 'system') { const [system, audit] = await Promise.all([api('/api/admin/system'), api('/api/admin/audit')]); state.system = system; state.audit = audit.audit; }
+      setView(target.dataset.view);
+    }
+    if (action === 'password') renderPasswordChange();
+    if (action === 'user-add') userModal();
+    if (action === 'user-edit') userModal(state.users.find(user => user.id === target.dataset.id));
     if (action==='menu') $('.sidebar').classList.toggle('mobile-open');
     if (action==='invite') inviteModal();
     if (action==='filter') { state.filter=target.dataset.filter; renderAdmin(); }
@@ -341,7 +368,7 @@ document.addEventListener('click', async event => {
       if (state.detailTab==='interview' && $('#interview-form')?.dataset.dirty==='true' && !await confirmAction('Catatan belum disimpan', 'Catatan wawancara Anda belum disimpan. Tetap berpindah tab?', 'Tinggalkan tab')) return;
       state.detailTab=target.dataset.tab; renderAdmin();
     }
-    if (action==='logout') { await api('/api/logout','POST',{}); state.user=null; navigate('/'); }
+    if (action==='logout') { await api('/api/logout','POST',{}); state.user=null; state.view='dashboard'; state.users=[]; state.audit=[]; state.system=null; state.exams=[]; state.detail=null; navigate('/'); }
     if (action==='close-modal') closeModal(false);
     if (action==='confirm-modal') closeModal(true);
     if (action==='copy-link') {
@@ -352,7 +379,7 @@ document.addEventListener('click', async event => {
     if (action==='rotate') {
       if (!await confirmAction('Buat ulang tautan?', 'Tautan sebelumnya tidak akan berlaku. Tautan baru berlaku selama 7 hari.', 'Buat tautan baru')) return;
       const data=await api(`/api/admin/exams/${state.detail.id}/rotate`,'POST',{});
-      invitationModal(data.invitationPath,state.detail.name);
+      invitationModal(data.invitationPath,state.detail.name,data.publicOrigin);
     }
     if (action==='delete') {
       if (!await confirmAction('Hapus data peserta?', 'Undangan, jawaban, nilai, dan catatan wawancara peserta ini akan dihapus secara permanen.', 'Hapus data',true)) return;
@@ -378,7 +405,7 @@ document.addEventListener('input', event => { if (event.target.closest('#intervi
 document.addEventListener('change', event => { if (event.target.closest('#interview-form')) $('#interview-form').dataset.dirty='true'; });
 document.addEventListener('submit', async event => {
   const form=event.target;
-  if (!['login-form','setup-form','invite-form','start-form','interview-form'].includes(form.id)) return;
+  if (!['login-form','setup-form','invite-form','start-form','interview-form','password-form','user-form','user-edit-form'].includes(form.id)) return;
   event.preventDefault();
   const button=form.querySelector('button[type="submit"]');
   button.disabled=true;
@@ -389,9 +416,22 @@ document.addEventListener('submit', async event => {
       await api(form.id==='login-form'?'/api/login':'/api/setup','POST',data);
       navigate('/penguji');
     }
+    if (form.id === 'password-form') {
+      if (data.password !== data.confirmPassword) throw new Error('Kata sandi baru tidak sama.');
+      await api('/api/admin/password','POST',{currentPassword:data.currentPassword,password:data.password});
+      navigate('/penguji');
+    }
+    if (form.id === 'user-form' || form.id === 'user-edit-form') {
+      const editing = form.id === 'user-edit-form';
+      await api(editing ? '/api/admin/users/' + form.dataset.id : '/api/admin/users', editing ? 'PATCH' : 'POST', editing ? {role:data.role,active:data.active === 'true',...(data.password ? {password:data.password} : {})} : data);
+      closeModal();
+      if (editing && form.dataset.id === state.user.id) { navigate('/'); return; }
+      state.users = (await api('/api/admin/users')).users;
+      setView('users'); toast('Akun berhasil disimpan.');
+    }
     if (form.id==='invite-form') {
       const result=await api('/api/admin/exams','POST',{...data,expiryDays:Number(data.expiryDays)});
-      state.exams=(await api('/api/admin/exams')).exams; renderAdmin(); invitationModal(result.invitationPath,result.exam.name);
+      state.exams=(await api('/api/admin/exams')).exams; renderAdmin(); invitationModal(result.invitationPath,result.exam.name,result.publicOrigin);
     }
     if (form.id==='start-form') {
       const result=await api('/api/exam/start','POST',{token:state.invitationToken,consent:data.consent==='on'});
@@ -426,6 +466,7 @@ async function route() {
     if (!status.configured) { renderLogin(false); return; }
     try { await loadAdmin(); }
     catch(error) { if (error.status===401) { renderLogin(); return; } throw error; }
+    if (state.user.mustChangePassword) { renderPasswordChange(); return; }
     if(path.includes('/hasil/')) state.detail=(await api(`/api/admin/exams/${path.split('/').at(-1)}`)).exam;
     else state.detail=null;
     if(path==='/') history.replaceState({},'', '/penguji');

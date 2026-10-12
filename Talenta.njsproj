@@ -53,6 +53,20 @@
     <Content Include="start.sh" />
     <Content Include=".env.example" />
     <Content Include="docs\bank-soal.pdf" />
+    <Content Include="lib\accounts.js" />
+    <Content Include="lib\config.js" />
+    <Content Include="scripts\setup-accounts.js" />
+    <Content Include="scripts\backup.js" />
+    <Content Include="scripts\check-production.js" />
+    <Content Include="tests\accounts.test.js" />
+    <Content Include="BUKA-DI-WEBSTORM.md" />
+    <Content Include="PRODUKSI.md" />
+    <Content Include="Buka-WebStorm.bat" />
+    <Content Include=".run\Serviam HRD.run.xml" />
+    <Content Include="Dockerfile" />
+    <Content Include="compose.yaml" />
+    <Content Include="deploy\Caddyfile" />
+    <Content Include=".env.production.example" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\Node.js Tools\Microsoft.NodejsToolsV2.targets" />
 </Project>

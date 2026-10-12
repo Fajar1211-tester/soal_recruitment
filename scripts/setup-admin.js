@@ -2,6 +2,10 @@ import { createInterface } from 'node:readline/promises';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { stdin, stdout } from 'node:process';
+import { loadEnvironment, readConfig } from '../lib/config.js';
+
+loadEnvironment();
+const config = readConfig();
 
 if (!stdin.isTTY) { console.error('Jalankan penyiapan akun dari terminal interaktif. Kata sandi tidak akan ditampilkan.'); process.exit(1); }
 const readline = createInterface({ input: stdin, output: stdout });
@@ -30,8 +34,8 @@ const password = await hiddenPassword('Kata sandi (minimal 12 karakter): ');
 const confirm = await hiddenPassword('Ulangi kata sandi: ');
 if (password !== confirm) { console.error('Kata sandi tidak sama.'); process.exit(1); }
 try {
-  const setupCode = readFileSync(join(process.env.DATA_DIR || '.data', 'bootstrap-token'), 'utf8').trim();
-  const response = await fetch(`http://127.0.0.1:${process.env.PORT || 3000}/api/setup`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Talenta-Request': '1' }, body: JSON.stringify({ name, email, password, setupCode }) });
+  const setupCode = readFileSync(join(config.dataDir, 'bootstrap-token'), 'utf8').trim();
+  const response = await fetch(`http://127.0.0.1:${config.port}/api/setup`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Talenta-Request': '1' }, body: JSON.stringify({ name, email, password, setupCode }) });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error);
   console.log('Akun penguji berhasil dibuat. Masuk melalui aplikasi menggunakan email dan kata sandi Anda.');

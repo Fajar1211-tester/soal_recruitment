@@ -28,18 +28,14 @@ Konfigurasi tersedia di `.vscode/launch.json`, `.vscode/tasks.json`, dan `.vscod
 Tugas tambahan tersedia melalui **Terminal → Run Task**:
 
 - **Talenta: buat akun penguji** — terminal interaktif untuk membuat akun pertama saat server sedang berjalan.
-- **Talenta: uji aplikasi** — menjalankan 24 pengujian otomatis.
+- **Talenta: uji aplikasi** — menjalankan 30 pengujian otomatis.
 - **Talenta: cek Node.js 24+** — memeriksa runtime sebelum menjalankan aplikasi.
 
-## Akun penguji pertama
+## Akun admin dan superadmin
 
-Saat web pertama kali terbuka, muncul halaman penyiapan. Dengan server tetap berjalan, buka terminal lain di folder proyek dan jalankan:
+Instalasi lokal baru otomatis menyiapkan `superadmin@serviam.local` dan `admin@serviam.local`. Buka `.data/initial-accounts.txt` di komputer sendiri untuk kata sandi acak. Masuk, lalu ganti kata sandi awal sebelum menggunakan dashboard. Jika akun sudah ada, akun dan kata sandi tersebut dipertahankan; penguji pertama dari versi lama menjadi superadmin dan dapat menambahkan admin melalui menu Akun penguji.
 
-```bash
-npm run admin:setup
-```
-
-Masukkan nama, email, dan kata sandi minimal 12 karakter; kata sandi tidak ditampilkan. Di VS Code, tugas **Talenta: buat akun penguji** menjalankan langkah ini di terminal terpisah. Alternatifnya, gunakan kode lokal `.data/bootstrap-token` pada halaman penyiapan web.
+Tugas `npm run admin:setup` adalah penyiapan manual superadmin pertama ketika belum ada akun dan server sedang berjalan. `npm run setup:accounts` dapat menyiapkan dua akun awal pada database kosong sebelum menjalankan server. Panduan WebStorm ada di `BUKA-DI-WEBSTORM.md`.
 
 ## Jika server tidak berjalan
 
@@ -50,4 +46,4 @@ Masukkan nama, email, dan kata sandi minimal 12 karakter; kata sandi tidak ditam
 
 ## Validasi paket
 
-Konfigurasi JSON/XML, referensi file solution/proyek, jalur relatif workspace, pemeriksaan runtime, serta kecocokan pola server-ready dengan startup aplikasi diperiksa saat paket dibuat. Aplikasi dan 24 pengujiannya dijalankan dari hasil ekstraksi ZIP. Lingkungan pemeriksaan ini tidak menyediakan IDE Visual Studio Windows atau VS Code, sehingga sesi F5 di IDE tersebut belum dijalankan secara langsung.
+Konfigurasi JSON/XML, referensi file solution/proyek, jalur relatif workspace, pemeriksaan runtime, serta kecocokan pola server-ready dengan startup aplikasi diperiksa saat paket dibuat. Aplikasi dan 30 pengujiannya dijalankan dari hasil ekstraksi ZIP. Lingkungan pemeriksaan ini tidak menyediakan IDE Visual Studio Windows atau VS Code, sehingga sesi F5 di IDE tersebut belum dijalankan secara langsung.

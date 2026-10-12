@@ -8,3 +8,8 @@ playwright-report/
 .vs/
 *.njsproj.user
 *.suo
+.idea/
+backups/
+.env.*
+!.env.example
+!.env.production.example

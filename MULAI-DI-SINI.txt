@@ -1,88 +1,29 @@
-HRD DIVISION PT SERVIAM GROUP SHIPYARD
-PROYEK APLIKASI UJIAN REKRUTMEN
-======================================
+HRD DIVISION PT SERVIAM GROUP SHIPYARD - VERSI 1.2
 
-Paket ini memuat aplikasi lengkap, 48 soal dan analisis sesuai PDF,
-dashboard penguji, wawancara STAR, serta pengujian otomatis.
-Penyelenggara: HRD Division PT Serviam Group Shipyard.
-Logo tersedia sebagai aset lokal public/serviam-logo.svg.
+1. Instal Node.js 24+. Ekstrak ZIP ke folder proyek.
+2. WebStorm: klik Buka-WebStorm.bat atau File - Open folder proyek.
+   Pilih profil Serviam HRD - Web lalu Run / Shift+F10.
+   Alternatif: klik start.bat (Windows) atau sh start.sh (Linux/macOS).
+3. Browser dibuka setelah server siap. Gunakan alamat dari konsol.
+4. Instalasi lokal baru membuat akun:
+   superadmin@serviam.local dan admin@serviam.local.
+   Buka .data/initial-accounts.txt secara pribadi untuk kata sandi acak.
+   Kata sandi awal wajib diganti saat masuk.
+5. Add invitation - isi peserta - Buat undangan - Copy link.
+   Bagikan link sendiri; email peserta hanya identitas opsional.
+6. Periksa hasil/analisis peserta melalui dashboard.
 
-KEBUTUHAN
-- Node.js versi 24 atau lebih baru harus sudah terpasang.
-- Tidak perlu menginstal database terpisah atau memasukkan API key.
-- Aplikasi berjalan melalui server Node, bukan dengan membuka index.html.
+48 soal, 65 menit, urutan soal per peserta, satu kesempatan ujian.
+Sesi dapat dilanjutkan dari browser yang sama selama waktu tersedia.
+Superadmin mengelola akun dan audit; admin mengelola peserta/hasil.
 
-MEMBUKA DI EDITOR
-- Visual Studio 2022: buka Talenta.sln, lalu tekan F5. Memerlukan
-  workload Node.js development dari Visual Studio Installer.
-- Visual Studio Code: buka Talenta.code-workspace, pilih konfigurasi
-  Talenta: jalankan & buka web pada Run and Debug, lalu tekan F5.
-- Petunjuk lengkap: BUKA-DI-VISUAL-STUDIO.md
+PENTING: localhost hanya dapat diakses pada laptop server itu sendiri.
+Untuk peserta internet gunakan domain dan hosting HTTPS: PRODUKSI.md.
+Saat memperbarui proyek lama, pertahankan folder .data.
+Akun lama tidak ditimpa. ZIP tidak berisi kata sandi atau database.
 
-WINDOWS
-1. Ekstrak ZIP ke satu folder. Jangan jalankan dari dalam ZIP.
-2. Klik dua kali start.bat. Biarkan jendela terminal tetap terbuka.
-   Browser akan dibuka otomatis setelah server siap.
-3. Di browser pada komputer yang sama, masukkan alamat localhost
-   dengan port 3000: http://localhost:3000
-
-LINUX / MACOS
-1. Ekstrak ZIP, lalu buka terminal di folder proyek.
-2. Jalankan: sh start.sh
-   Browser akan dibuka otomatis jika komputer memiliki desktop.
-3. Di browser pada komputer yang sama, masukkan alamat localhost
-   dengan port 3000: http://localhost:3000
-
-MEMBUAT AKUN PENGUJI PERTAMA
-- Cara terminal: saat server berjalan, buka terminal lain di folder
-  proyek lalu jalankan: npm run admin:setup
-  Masukkan nama, email, dan kata sandi minimal 12 karakter.
-- Cara browser: setelah server berjalan, buka file lokal
-  .data/bootstrap-token menggunakan editor teks. Salin kode dari file
-  itu ke kolom Kode penyiapan pada aplikasi, lalu buat akun Anda.
-  Kode hanya berlaku untuk membuat akun pertama. Jangan bagikan kode.
-
-MENGGUNAKAN APLIKASI
-1. Masuk sebagai penguji.
-2. Pilih Undang peserta, isi nama dan posisi, kemudian salin tautan.
-3. Bagikan tautan pribadi kepada peserta. Pengiriman email dilakukan
-   sendiri; aplikasi tidak mengirim email otomatis.
-4. Setelah ujian selesai, buka hasil peserta untuk melihat nilai,
-   rincian jawaban, analisis, dan penilaian wawancara STAR.
-
-PENTING UNTUK TAUTAN PESERTA
-- localhost hanya bisa diakses dari komputer yang menjalankan server.
-- Jika peserta berada di komputer lain, gunakan alamat server yang
-  benar-benar dapat diakses peserta ketika membuka dashboard penguji
-  dan membuat undangan. Untuk akses internet, pasang aplikasi di
-  hosting/server dengan HTTPS; petunjuk konfigurasi ada di README.md.
-- Satu tautan memberi satu kesempatan ujian. Sesi dapat dilanjutkan
-  dari browser yang sama selama waktu tersedia. Ujian yang selesai
-  tidak dapat diulang.
-
-URUTAN SOAL
-- Soal diacak di dalam masing-masing bagian A-E per tautan peserta.
-- Urutan tersimpan dan tetap sama saat halaman/server dimuat ulang.
-- Membuat ulang tautan pending membuat urutan baru.
-- Penilaian tetap menggunakan kode soal dari dokumen sumber.
-- Pembaruan aplikasi menjaga urutan ujian lama yang sudah dimulai.
-
-PENYIMPANAN
-- Database baru dibuat otomatis dalam folder .data saat pertama jalan.
-- ZIP ini tidak menyertakan akun, kata sandi, sesi, atau data peserta.
-- Jangan menghapus folder .data setelah mulai menggunakan aplikasi.
-
-PEMERIKSAAN
-- Jalankan npm test dari folder proyek untuk 24 pengujian otomatis.
-- Panduan lengkap: README.md
-- Dokumen asli: docs/bank-soal.pdf
-
-JIKA HALAMAN BERHENTI DI "MENYIAPKAN TALENTA"
-- Setelah npm start, buka alamat web yang tercetak di terminal.
-- Jangan membuka aplikasi menggunakan server statis seperti Live Server;
-  database dan API harus dijalankan oleh server.js.
-- File index.html di folder proyek dan public/index.html sekarang
-  mengarahkan ke server port 3000 jika dibuka secara langsung.
-- Jika port 3000 sudah dipakai, tutup proses Talenta sebelumnya sebelum
-  menjalankan versi baru. Jangan menutup terminal saat aplikasi dipakai.
-- Jika Anda mengatur PORT lain, gunakan alamat sesuai port dari terminal.
+Panduan WebStorm: BUKA-DI-WEBSTORM.md
+Panduan Visual Studio / VS Code: BUKA-DI-VISUAL-STUDIO.md
+Backup konsisten: npm run backup
+Pengujian: npm test (30 pengujian)
+Operasi produksi: PRODUKSI.md

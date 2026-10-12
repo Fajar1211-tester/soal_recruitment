@@ -23,23 +23,29 @@ Setelah `npm start`, gunakan **alamat web yang tercetak di terminal**. Pada port
 
 Jika ingin mematikan pembukaan browser otomatis, atur `TALENTA_OPEN_BROWSER=false` pada environment proses. Halaman juga menampilkan petunjuk jika JavaScript gagal termuat dan permintaan server dibatasi 12 detik agar tidak menunggu tanpa batas.
 
-## Akun penguji pertama
+## Akun admin dan superadmin
 
-Server membuat kode penyiapan acak di `.data/bootstrap-token` dengan izin file `0600`. Akun pertama hanya bisa dibuat dengan kode tersebut. Tidak ada kata sandi bawaan.
+Pada instalasi lokal baru, `npm start` otomatis membuat **dua akun** dengan kata sandi acak berbeda:
 
-Dengan server aktif, jalankan dari terminal interaktif lain:
+- `superadmin@serviam.local`: mengelola seluruh fitur, akun penguji, status sistem, dan audit.
+- `admin@serviam.local`: mengundang peserta, memeriksa jawaban/analisis, menilai wawancara, dan mengekspor hasil.
+
+Alamat ini adalah identitas login lokal; tidak mengirim email. Ubah `SUPERADMIN_EMAIL` dan `ADMIN_EMAIL` pada `.env` **sebelum instalasi pertama** jika ingin identitas lain. Kata sandi awal tersimpan secara pribadi pada `.data/initial-accounts.txt` (izin 0600 pada Linux). Buka file itu di komputer/server sendiri. Kata sandi tidak dicetak ke log dan tidak disertakan dalam Git atau ZIP. Dashboard terkunci sampai pemilik akun mengganti kata sandi awal. Setelah kedua akun menggantinya, hapus file kata sandi awal melalui pengelola file Anda.
+
+Aplikasi memakai akun yang sudah ada tanpa menimpanya. Pada migrasi versi lama, akun penguji pertama menjadi superadmin; penguji lainnya menjadi admin. Akun admin tambahan dapat dibuat melalui **Akun penguji → Tambah akun**. Superadmin dapat menonaktifkan akun, mengganti peran, dan mereset kata sandi awal; sesi akun yang diubah dihentikan. Superadmin aktif terakhir dilindungi dari penonaktifan/penurunan peran. Menu **Ganti kata sandi** juga tersedia untuk setiap akun.
+
+Untuk menyiapkan akun sebelum menjalankan server atau pada produksi:
 
 ```bash
-# Jalankan dari folder proyek yang berisi package.json.
-npm run admin:setup
+npm run setup:accounts
 ```
 
-Masukkan nama, email, serta kata sandi minimal 12 karakter. Input kata sandi tidak ditampilkan. Alternatifnya, gunakan halaman penyiapan aplikasi dengan kode lokal tersebut. Kode dihapus setelah akun berhasil dibuat dan endpoint penyiapan kemudian terkunci. Jangan memasukkan kode atau kata sandi ke Git, log, atau chat.
+Perintah ini hanya bekerja pada database tanpa akun. Konfigurasi produksi memakai `BOOTSTRAP_ACCOUNTS=false`. Untuk penyiapan manual akun pertama melalui web, kode lokal `.data/bootstrap-token` tetap didukung saat tidak ada akun; `npm run admin:setup` membuat superadmin pertama melalui server yang sedang berjalan.
 
 ## Alur penguji dan peserta
 
-1. Penguji masuk, memilih **Undang peserta**, dan mengisi nama serta posisi peserta. Email opsional. Masa berlaku undangan dapat dipilih 1, 7, 14, atau 30 hari.
-2. Salin tautan yang muncul dan bagikan secara pribadi. Aplikasi tidak mengirim email secara otomatis dan hanya menyimpan hash token. Tautan asli hanya tampil saat dibuat. **Buat ulang tautan** membatalkan tautan lama, hanya jika peserta belum mulai.
+1. Penguji masuk, memilih **Add invitation**, dan mengisi nama serta posisi peserta. Email opsional. Masa berlaku undangan dapat dipilih 1, 7, 14, atau 30 hari.
+2. Tekan **Copy link**, lalu bagikan tautan sendiri melalui WhatsApp, pesan, atau saluran yang Anda pilih. Aplikasi tidak mengirim email secara otomatis dan hanya menyimpan hash token. Tautan asli hanya tampil saat dibuat. **Buat ulang tautan** membatalkan tautan lama, hanya jika peserta belum mulai.
 3. Peserta membaca instruksi, menyetujui pengolahan hasil untuk rekrutmen, lalu mulai. **Satu kali berarti satu kesempatan ujian**, bukan satu kali membuka halaman instruksi. Token dikonsumsi atomik saat mulai dan tidak dapat digunakan dari browser kedua.
 4. Sesi dapat dilanjutkan di browser yang sama, dengan cookie yang sama, selama batas waktu belum habis. Jawaban disimpan otomatis di server. Kegagalan penyimpanan ditampilkan dan perpindahan bagian menunggu penyimpanan berhasil.
 5. Bagian yang sudah ditutup tidak dapat dibuka kembali. Deadline berasal dari server, tetap berjalan saat peserta offline, dan tidak dapat diperpanjang dengan mengubah jam perangkat. Waktu habis menggunakan jawaban terakhir yang tersimpan. Setelah bagian E atau seluruh waktu habis, hasil dihitung otomatis.
@@ -79,7 +85,7 @@ Kuesioner E belum divalidasi secara statistik. Aplikasi ini alat saring internal
 
 Data disimpan di `.data/talenta.sqlite` (WAL), bukan di penyimpanan browser. `.data/` diabaikan Git. Cookie sesi `HttpOnly`, `SameSite=Strict`; kata sandi di-hash dengan scrypt. Kunci soal dan PDF hanya tersedia melalui endpoint penguji yang memerlukan autentikasi. Mutasi memerlukan header aplikasi dan memeriksa origin. Login dan penyiapan memiliki batas percobaan. Ekspor CSV melindungi sel dari formula spreadsheet.
 
-Konfigurasi dibaca dari environment proses, **bukan otomatis dari `.env`**:
+Konfigurasi dibaca otomatis dari `.env` di folder proyek. Environment proses memiliki prioritas. Salin `.env.example` untuk lokal atau `.env.production.example` untuk server produksi:
 
 | Variabel | Default | Fungsi |
 | --- | --- | --- |
@@ -88,14 +94,26 @@ Konfigurasi dibaca dari environment proses, **bukan otomatis dari `.env`**:
 | `DATA_DIR` | `.data` dalam checkout | Direktori database persisten |
 | `APP_ORIGIN` | origin permintaan lokal | Origin aplikasi untuk validasi permintaan; isi URL HTTPS sebenarnya saat dipasang publik |
 | `COOKIE_SECURE` | aktif jika `APP_ORIGIN` HTTPS | `true` mewajibkan pengiriman cookie melalui HTTPS |
+| `NODE_ENV` | development | `production` mewajibkan origin HTTPS dan memblokir domain contoh |
+| `BOOTSTRAP_ACCOUNTS` | true pada lokal | Membuat dua akun acak hanya jika database kosong; false pada produksi |
+| `SUPERADMIN_EMAIL` / `ADMIN_EMAIL` | akun lokal di atas | Identitas awal sebelum database diinisialisasi |
+| `TRUST_PROXY` | false | Aktifkan hanya di belakang proxy tepercaya; container aplikasi tidak diekspos langsung |
 
 Untuk pemasangan publik, jalankan di belakang reverse proxy HTTPS dengan `APP_ORIGIN` yang benar dan cookie Secure. Tautan undangan mengikuti origin yang sedang dipakai penguji, sehingga gunakan alamat publik saat membuat undangan. Gunakan satu proses server dan volume database persisten, batasi akses server pada operator, serta buat backup SQLite yang konsisten termasuk transaksi WAL. Jangan hanya menyalin file `.sqlite` saat database sedang ditulis.
 
 Data akun, peserta, dan sesi tersimpan saat proses restart. Proses server harus dijalankan ulang setelah pemulihan lingkungan cloud. Snapshot cloud berbeda dari backup data produksi; jangan mempublikasikan snapshot yang memuat data peserta nyata atau sesi penguji aktif. Aplikasi belum dipasang ke layanan hosting publik oleh tugas ini.
 
+## WebStorm dan operasi produksi
+
+Buka folder proyek di WebStorm dan jalankan profil **Serviam HRD - Web** yang tersedia pada `.run/Serviam HRD.run.xml`. Windows menyediakan `Buka-WebStorm.bat`; panduan lengkap ada di `BUKA-DI-WEBSTORM.md`. Instalasi lokal dapat dijalankan tanpa paket tambahan, SMTP, atau database terpisah.
+
+Konfigurasi Docker Compose dan proxy Caddy tersedia untuk server HTTPS dengan volume database persisten, aplikasi non-root, filesystem container read-only, restart otomatis, dan image dasar yang dipatok digest. Tahapan deployment, backup dan pemulihan ada di `PRODUKSI.md`. `npm run backup` membuat snapshot SQLite konsisten yang juga dapat dilakukan saat server aktif. `npm run check:production -- --online` memeriksa konfigurasi, integritas database, superadmin yang sudah mengganti kata sandi, dan endpoint HTTPS yang benar-benar sudah dipasang.
+
+`/api/health` memeriksa server/database. `/api/ready` hanya siap setelah superadmin aktif menyelesaikan kata sandi awal. Pengelolaan akun dan audit diperiksa server berdasarkan peran, termasuk saat URL API dipanggil langsung.
+
 ## Validasi
 
-`npm test` menjalankan 24 pengujian dengan database sementara yang terisolasi: kesesuaian kunci/bobot/ambang, skoring E, validitas, wawancara, autentikasi, CSRF, rotasi dan expiry, dua permintaan mulai bersamaan, deadline server, penguncian jawaban, penghapusan, ekspor CSV, ketahanan data dan sesi setelah restart, serta pengarahan HTML lokal, fallback pemuatan, CSP pembuka, dan perintah browser lintas platform. Pengujian tambahan memeriksa keutuhan seluruh butir setelah pengacakan, urutan per tautan, urutan setelah resume/restart/rotasi, skoring setelah pengacakan, migrasi database lama, serta pemuatan identitas dan logo.
+`npm test` menjalankan 30 pengujian dengan database sementara yang terisolasi: kesesuaian kunci/bobot/ambang, skoring E, validitas, wawancara, autentikasi, CSRF, rotasi dan expiry, dua permintaan mulai bersamaan, deadline server, penguncian jawaban, penghapusan, ekspor CSV, ketahanan data dan sesi setelah restart, serta pengarahan HTML lokal, fallback pemuatan, CSP pembuka, dan perintah browser lintas platform. Pengujian tambahan memeriksa keutuhan seluruh butir setelah pengacakan, urutan per tautan, urutan setelah resume/restart/rotasi, skoring setelah pengacakan, migrasi database lama, serta pemuatan identitas dan logo.
 
 Alur antarmuka juga telah diuji di Chromium: akun pertama, undangan, 48 jawaban, resume, penolakan browser kedua, skor 46/46, penyimpanan wawancara dan keputusan, pencarian, panduan, serta tata letak desktop/ponsel. Data uji tidak dimasukkan ke database aplikasi utama.
 
@@ -111,3 +129,5 @@ scripts/setup-admin.js  Penyiapan akun dengan input kata sandi tersembunyi
 tests/               Pengujian skoring dan API
 docs/bank-soal.pdf    Dokumen lampiran asli
 ```
+
+Pemeriksaan versi 1.2 mencakup browser desktop/mobile, alur Add invitation dan clipboard Copy link, kata sandi awal, peran admin/superadmin, container produksi non-root/read-only, backup dan kelanjutan sesi setelah container restart. Konfigurasi Caddy divalidasi. WebStorm tidak tersedia pada mesin pemeriksaan, sehingga membuka IDE di laptop dan penerbitan domain HTTPS nyata belum diuji.
